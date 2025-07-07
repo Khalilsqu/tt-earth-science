@@ -25,8 +25,7 @@ st.title("Earth Sciencs TimeTable", anchor=False)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 df = conn.read(
-    worksheet="Sheet1",
-    ttl="10m",
+    ttl="30m",
 )
 
 data_source = sorted(df['Data Source'].astype(str).unique())
