@@ -24,7 +24,10 @@ st.title("Earth Sciencs TimeTable", anchor=False)
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-df = conn.read()
+df = conn.read(
+    worksheet="Sheet1",
+    ttl="10m",
+)
 
 data_source = sorted(df['Data Source'].astype(str).unique())
 # Single select Term with default 'Fall 2025'
