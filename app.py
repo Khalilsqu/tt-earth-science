@@ -42,7 +42,9 @@ df = df[df['Data Source'] == selected_source]
 # Sidebar for filtering
 st.sidebar.header("Filters")
 staff_names = sorted([name for name in df['Staff Name'].astype(str).unique() if name != 'nan'])
-selected_staff = st.sidebar.multiselect('Select Instructor(s)', staff_names)
+selected_staff = st.sidebar.multiselect('Select Instructor(s)', staff_names,
+                                        help="Select one or more instructors to filter the schedule",
+                                        )
 
 # Filter data based on selection
 if selected_staff:
@@ -51,9 +53,13 @@ else:
     df_filtered = df.copy()
 
 # Schedule type selector
-schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'])
+schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'],
+                                     help="Select 'Lecture' for regular classes or 'Exam' for final exam schedule"
+                                     )
 # View mode selector
-display_mode = st.sidebar.selectbox('View Mode', ['Schedule View', 'Table View'])
+display_mode = st.sidebar.selectbox('View Mode', ['Schedule View', 'Table View'],
+                                    help="Choose 'Schedule View' for a visual timetable or 'Table View' for a detailed list"
+                                    )
 if display_mode == 'Table View':
     # Show full DataFrame in table mode
     if schedule_type == 'Exam':
