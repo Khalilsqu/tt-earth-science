@@ -30,7 +30,7 @@ data_source = sorted(df['Data Source'].astype(str).unique())
 # Single select Term with default 'Fall 2025'
 # default_idx = data_source.index('fall 2025') if 'fall 2025' in data_source else 0
 # find uniques and choose the last one as default
-default_idx = 0
+default_idx = 1
 selected_source = st.sidebar.selectbox('Data Source', data_source, index=default_idx)
 # Apply term filter
 df = df[df['Data Source'] == selected_source]
