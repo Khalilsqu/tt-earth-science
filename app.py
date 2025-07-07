@@ -26,13 +26,14 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 df = conn.read()
 
-# Term filter based on combined sheet
-terms = sorted(df['Term'].astype(str).unique())
+data_source = sorted(df['Term'].astype(str).unique())
 # Single select Term with default 'Fall 2025'
-default_idx = terms.index('fall 2025') if 'fall 2025' in terms else 0
-selected_term = st.sidebar.selectbox('Select Term', terms, index=default_idx)
+# default_idx = data_source.index('fall 2025') if 'fall 2025' in data_source else 0
+# find uniques and choose the last one as default
+default_idx = -1 if not data_source else 0
+selected_source = st.sidebar.selectbox('Data Source', data_source, index=default_idx)
 # Apply term filter
-df = df[df['Term'] == selected_term]
+df = df[df['Data Source'] == selected_source]
 
 # Sidebar for filtering
 st.sidebar.header("Filters")
