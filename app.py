@@ -8,7 +8,7 @@ import pandas as pd
 st.set_page_config(page_title="Earth Sciencs", layout="wide")
 
 # Title for the app
-st.title("Earth Sciencs TimeTable", anchor=False)
+st.markdown("<h1 style='font-size:32px;'>Earth Sciencs TimeTable</h1>", unsafe_allow_html=True)
 
 # Term selector
 # term_files = {'Fall 2024': 'fall2024_split_slot.xlsx', 'Fall 2025': 'fall2025_split_slot.xlsx'}
@@ -67,10 +67,14 @@ if display_mode == 'Table View':
         exam_df = df_filtered.dropna(subset=['Course Code']).drop_duplicates(subset=['Course Code'])
         # Reindex starting from 1
         exam_df.index = range(1, len(exam_df) + 1)
+        # Remove Data Source column
+        exam_df = exam_df.drop(columns=['Data Source'], errors='ignore')
         st.dataframe(exam_df)
     else:
         # Reindex starting from 1
         df_filtered.index = range(1, len(df_filtered) + 1)
+        # Remove Data Source column
+        df_filtered = df_filtered.drop(columns=['Data Source'], errors='ignore')
         st.dataframe(df_filtered, height=600)
     st.stop()
 
