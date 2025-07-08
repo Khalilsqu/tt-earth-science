@@ -46,18 +46,18 @@ selected_staff = st.sidebar.multiselect('Select Instructor(s)', staff_names,
                                         help="Select one or more instructors to filter the schedule",
                                         )
 
-# Filter data based on selection
-if selected_staff:
-    df_filtered = df[df['Staff Name'].isin(selected_staff)].copy()
-else:
-    df_filtered = df.copy()
-
 # Level filter
 if 'Level' in df_filtered.columns:
     selected_level = st.sidebar.radio('Select Level', ['UG', 'PG', 'Both'], index=2,
                                       help="Filter by course level: UG, PG, or Both")
     if selected_level != 'Both':
         df_filtered = df_filtered[df_filtered['Level'] == selected_level].copy()
+
+# Filter data based on selection
+if selected_staff:
+    df_filtered = df[df['Staff Name'].isin(selected_staff)].copy()
+else:
+    df_filtered = df.copy()
 
 # Schedule type selector
 schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'],
