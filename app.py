@@ -41,23 +41,27 @@ df = df[df['Data Source'] == selected_source]
 
 # Sidebar for filtering
 st.sidebar.header("Filters")
+
+# Level filter
+if 'Level' in df.columns:
+    selected_level = st.sidebar.radio('Level', ['UG', 'PG', 'Both'], index=2,
+                                      help="Filter by course level: UG, PG, or Both")
+    if selected_level != 'Both':
+        df = df[df['Level'] == selected_level].copy()
+
+
 staff_names = sorted([name for name in df['Staff Name'].astype(str).unique() if name != 'nan'])
 selected_staff = st.sidebar.multiselect('Select Instructor(s)', staff_names,
                                         help="Select one or more instructors to filter the schedule",
                                         )
-
-# Level filter
-if 'Level' in df.columns:
-    selected_level = st.sidebar.radio('Select Level', ['UG', 'PG', 'Both'], index=2,
-                                      help="Filter by course level: UG, PG, or Both")
-    if selected_level != 'Both':
-        df = df[df['Level'] == selected_level].copy()
 
 # Filter data based on selection
 if selected_staff:
     df_filtered = df[df['Staff Name'].isin(selected_staff)].copy()
 else:
     df_filtered = df.copy()
+
+
 
 # Schedule type selector
 schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'],
