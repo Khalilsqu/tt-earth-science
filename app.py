@@ -1,224 +1,208 @@
 import streamlit as st
-# Render schedule with custom HTML and JavaScript
 from streamlit_gsheets import GSheetsConnection
 import streamlit.components.v1 as components
 import pandas as pd
 
-# Configure page for wide layout
-st.set_page_config(page_title="Earth Sciencs", layout="wide")
+# ——— Read any existing query‐params —————————————————————————————
+params = st.query_params
+DEFAULT_LEVEL = "Both"
+DEFAULT_TYPE  = "Lecture"
+DEFAULT_VIEW  = "Schedule View"
 
-# Title for the app
-st.markdown("<h1 style='font-size:32px;'>Earth Sciencs TimeTable</h1>", unsafe_allow_html=True)
+# ——— Page setup ——————————————————————————————————————————————
+st.set_page_config(page_title="Earth Sciences", layout="wide")
+st.markdown("<h1 style='font-size:32px;'>Earth Sciences TimeTable</h1>", unsafe_allow_html=True)
 
-# Term selector
-# term_files = {'Fall 2024': 'fall2024_split_slot.xlsx', 'Fall 2025': 'fall2025_split_slot.xlsx'}
-# selected_term = st.sidebar.selectbox('Select Term', list(term_files.keys()))
-# file_to_load = term_files[selected_term]
-
-# Load the processed schedule data
-# @st.cache_data
-# def load_data(file_path):
-#     return pd.read_excel(file_path)
-
-# df = load_data(file_to_load)
-
+# ——— Load the sheet ————————————————————————————————————————————
 conn = st.connection("gsheets", type=GSheetsConnection)
+df = conn.read(ttl="30m")
 
-df = conn.read(
-    ttl="30m",
+# ——— Data Source selector ——————————————————————————————————————
+data_sources = sorted(df['Data Source'].dropna().unique().astype(str))
+DEFAULT_SOURCE = data_sources[-1]
+
+# read or fallback
+src = params.get("source", DEFAULT_SOURCE)
+if src not in data_sources:
+    src = DEFAULT_SOURCE
+
+selected_source = st.sidebar.selectbox(
+    "Data Source",
+    data_sources,
+    index=data_sources.index(src),
+    help="Original vs updated schedule"
 )
 
-data_source = sorted(df['Data Source'].astype(str).unique())
-# Single select Term with default 'Fall 2025'
-# default_idx = data_source.index('fall 2025') if 'fall 2025' in data_source else 0
-# find uniques and choose the last one as default
-default_idx = 1
-selected_source = st.sidebar.selectbox('Data Source', data_source, index=default_idx,
-                                       help="Select either the Original course schedule or the updated done by Khalil Al Hooti"
-                                      )
-# Apply term filter
+# ——— Level selector —————————————————————————————————————————
+levels = ["UG", "PG", "Both"]
+lvl = params.get("level", DEFAULT_LEVEL)
+if lvl not in levels:
+    lvl = DEFAULT_LEVEL
+
+selected_level = st.sidebar.radio(
+    "Level",
+    levels,
+    index=levels.index(lvl),
+    help="UG, PG, or Both"
+)
+
+# ——— Apply Data Source + Level so Staff list is accurate —————————————————
 df = df[df['Data Source'] == selected_source]
+if selected_level != "Both" and 'Level' in df.columns:
+    df = df[df['Level'] == selected_level]
 
-# Sidebar for filtering
-st.sidebar.header("Filters")
-
-# Level filter
-if 'Level' in df.columns:
-    selected_level = st.sidebar.radio('Level', ['UG', 'PG', 'Both'], index=2,
-                                      help="Filter by course level: UG, PG, or Both")
-    if selected_level != 'Both':
-        df = df[df['Level'] == selected_level].copy()
-
-
-staff_names = sorted([name for name in df['Staff Name'].astype(str).unique() if name != 'nan'])
-selected_staff = st.sidebar.multiselect('Select Instructor(s)', staff_names,
-                                        help="Select one or more instructors to filter the schedule",
-                                        )
-
-# Filter data based on selection
+# ——— Instructor filter (not in URL) —————————————————————————————
+staff_names = sorted(df['Staff Name'].dropna().unique().astype(str))
+selected_staff = st.sidebar.multiselect(
+    "Select Instructor(s)",
+    staff_names,
+    help="Filter by one or more instructors"
+)
 if selected_staff:
-    df_filtered = df[df['Staff Name'].isin(selected_staff)].copy()
+    df = df[df['Staff Name'].isin(selected_staff)]
+
+# ——— Schedule Type selector ——————————————————————————————————
+types = ["Lecture", "Exam"]
+typ = params.get("type", DEFAULT_TYPE)
+if typ not in types:
+    typ = DEFAULT_TYPE
+
+schedule_type = st.sidebar.selectbox(
+    "Schedule Type",
+    types,
+    index=types.index(typ),
+    help="Lecture vs Exam"
+)
+
+# ——— Time‐slot filter ———————————————————————————————————————
+time_help = "Select one or more time slots"
+if schedule_type == "Lecture":
+    time_options = sorted(df['Time'].dropna().unique().astype(str))
+    selected_times = st.sidebar.multiselect("Select Time Slots", time_options, help=time_help)
+    if selected_times:
+        df = df[df['Time'].isin(selected_times)]
 else:
-    df_filtered = df.copy()
-
-
-
-# Schedule type selector
-schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'],
-                                     help="Select 'Lecture' for regular classes or 'Exam' for final exam schedule"
-                                     )
-
-# Time slot filter based on schedule type
-
-help_time_slot="Select one or more time slots to filter the schedule"
-if schedule_type == 'Lecture':
-    time_options = sorted(df_filtered['Time'].dropna().unique())
-    selected_times = st.sidebar.multiselect('Select Time Slots', time_options,
-                                            help=help_time_slot,
-                                            )
+    exam_options = sorted(df['Exam Time'].dropna().unique().astype(str))
+    selected_times = st.sidebar.multiselect("Select Exam Time Slots", exam_options, help=time_help)
     if selected_times:
-        df_filtered = df_filtered[df_filtered['Time'].isin(selected_times)].copy()
-else:  # Exam
-    exam_times = sorted(df_filtered['Exam Time'].dropna().unique())
-    selected_times = st.sidebar.multiselect('Select Exam Time Slots', exam_times,
-                                            help=help_time_slot,
-                                            )
-    if selected_times:
-        df_filtered = df_filtered[df_filtered['Exam Time'].isin(selected_times)].copy()
+        df = df[df['Exam Time'].isin(selected_times)]
 
-# View mode selector
-display_mode = st.sidebar.selectbox('View Mode', ['Schedule View', 'Table View'],
-                                    help="Choose 'Schedule View' for a visual timetable or 'Table View' for a detailed list"
-                                    )
-if display_mode == 'Table View':
-    # Show full DataFrame in table mode
-    if schedule_type == 'Exam':
-        # Drop duplicate rows based on Course Code only
-        exam_df = df_filtered.dropna(subset=['Course Code']).drop_duplicates(subset=['Course Code'])
-        # Reindex starting from 1
+# ——— View Mode selector —————————————————————————————————————
+views = ["Schedule View", "Table View"]
+vw = params.get("view", DEFAULT_VIEW)
+if vw not in views:
+    vw = DEFAULT_VIEW
+
+display_mode = st.sidebar.selectbox(
+    "View Mode",
+    views,
+    index=views.index(vw),
+    help="Schedule vs Table"
+)
+
+# ——— Write all four back into the URL ————————————————————————
+st.query_params.from_dict({
+    "source": selected_source,
+    "level":  selected_level,
+    "type":   schedule_type,
+    "view":   display_mode
+})
+
+# ——— Render Table View ——————————————————————————————————————
+if display_mode == "Table View":
+    if schedule_type == "Exam":
+        exam_df = (
+            df.dropna(subset=['Course Code'])
+              .drop_duplicates(subset=['Course Code'])
+              .drop(columns=['Data Source'], errors='ignore')
+        )
         exam_df.index = range(1, len(exam_df) + 1)
-        # Remove Data Source column
-        exam_df = exam_df.drop(columns=['Data Source'], errors='ignore')
         st.dataframe(exam_df)
     else:
-        # Reindex starting from 1
-        df_filtered.index = range(1, len(df_filtered) + 1)
-        # Remove Data Source column
-        df_filtered = df_filtered.drop(columns=['Data Source'], errors='ignore')
-        st.dataframe(df_filtered, height=600)
+        df2 = df.drop(columns=['Data Source'], errors='ignore')
+        df2.index = range(1, len(df2) + 1)
+        st.dataframe(df2, height=600)
     st.stop()
 
-# Build cell content including Course Code, Section, Staff Name, and Location
-df_filtered['Cell'] = df_filtered.apply(
+# ——— Build Cell content ——————————————————————————————————————
+df['Cell'] = df.apply(
     lambda r: f"{r['Course Code']} ({r['Section']})\n{r['Staff Name']}\n{r['Hall']}",
     axis=1
 )
 
-if display_mode == 'Schedule View':
-    if schedule_type == 'Lecture':
-        # Define days and order
-        days_order = ["SUN", "MON", "TUE", "WED", "THU"]
+# ——— Build Schedule Data —————————————————————————————————————
+if schedule_type == "Lecture":
+    days_order = ["SUN", "MON", "TUE", "WED", "THU"]
+    sched = df[['Day','Time','Cell']].dropna()
+    pivot = sched.pivot_table(
+        index='Time',
+        columns='Day',
+        values='Cell',
+        aggfunc=lambda cells: "\n---\n".join(cells)
+    ).reindex(columns=days_order).fillna("")
+    schedule_data = pivot.reset_index().to_dict(orient="records")
+    columns = ["Time"] + days_order
 
-        # Prepare pivot table: index=Time slots, columns=Days, values=Cell
-        schedule = df_filtered[['Day', 'Time', 'Cell']].dropna()
-        pivot = schedule.pivot_table(
-            index='Time',
-            columns='Day',
-            values='Cell',
-            aggfunc=lambda cells: "\n---\n".join(cells)
-        )
+else:
+    exam_df = (
+        df[['Exam Date','Exam Time','Course Code','Staff Name']]
+        .dropna()
+        .drop_duplicates(subset=['Course Code'])
+    )
+    exam_df['Exam Date'] = pd.to_datetime(exam_df['Exam Date']).dt.date
+    exam_df['Cell'] = exam_df.apply(lambda r: f"{r['Course Code']}\n{r['Staff Name']}", axis=1)
+    pivot = exam_df.pivot_table(
+        index='Exam Time',
+        columns='Exam Date',
+        values='Cell',
+        aggfunc=lambda cs: "\n---\n".join(cs)
+    )
+    # sort by parsed start times
+    times = list(pivot.index)
+    parsed = []
+    for t in times:
+        try:
+            parsed.append(pd.to_datetime(t.split(" - ")[0].strip(), format="%I:%M%p"))
+        except:
+            parsed.append(pd.Timestamp.max)
+    ordered = [t for _, t in sorted(zip(parsed, times))]
+    pivot = pivot.reindex(index=ordered).fillna("")
+    date_cols = [d.strftime('%Y-%m-%d') for d in pivot.columns]
+    pivot.columns = date_cols
+    schedule_data = pivot.reset_index().to_dict(orient="records")
+    columns = ["Exam Time"] + date_cols
 
-        # Reorder columns and fill missing cells
-        pivot = pivot.reindex(columns=days_order).fillna("")
-        # Prepare JSON data
-        schedule_data = pivot.reset_index().fillna("").to_dict(orient="records")
-        columns = ["Time"] + days_order
-    else:
-        # Exam schedule view: pivot by exam time and date, using only course and instructor, removing duplicates
-        exam_df = df_filtered[['Exam Date', 'Exam Time', 'Course Code', 'Staff Name']].dropna()
-        # Keep one entry per course
-        exam_df = exam_df.drop_duplicates(subset=['Course Code'])
-        exam_df['Exam Date'] = pd.to_datetime(exam_df['Exam Date']).dt.date
-        # Build cell with course and instructor only
-        exam_df['Cell'] = exam_df.apply(lambda r: f"{r['Course Code']}\n{r['Staff Name']}", axis=1)
-        pivot = exam_df.pivot_table(
-            index='Exam Time',
-            columns='Exam Date',
-            values='Cell',
-            aggfunc=lambda cells: "\n---\n".join(cells)
-        )
-        # Sort Exam Time slots by start time
-        # Sort Exam Time slots by start time, placing unparsable entries at the end
-        times = list(pivot.index)
-        # Parse start times, default to max for invalid
-        parsed = []
-        for t in times:
-            try:
-                start = pd.to_datetime(t.split(" - ")[0].strip(), format="%I:%M%p")
-            except Exception:
-                start = pd.Timestamp.max
-            parsed.append(start)
-        # Order by parsed times
-        ordered = [time for _, time in sorted(zip(parsed, times))]
-        pivot = pivot.reindex(index=ordered)
-        # Reorder columns and fill missing cells
-        pivot = pivot.reindex(columns=sorted(pivot.columns)).fillna("")
-        # Prepare JSON data
-        date_cols = [d.strftime('%Y-%m-%d') for d in pivot.columns]
-        pivot.columns = date_cols
-        schedule_data = pivot.reset_index().to_dict(orient="records")
-        columns = ["Exam Time"] + date_cols
-
-
-# Build table headers and rows
-headers = ''.join(f'<th>{col}</th>' for col in columns)
-rows_html = ''
+# ——— Render HTML Schedule —————————————————————————————————————
+headers = "".join(f"<th>{c}</th>" for c in columns)
+rows_html = ""
 for row in schedule_data:
-    row_cells = ''
-    for col in columns:
-        cell = row.get(col, "")
-        # split parts by the text separator and join with HTML horizontal rule
-        parts = str(cell).split("\n---\n")
-        cell_html = '<hr style="border-top:1px dashed #666; width:100%; margin:4px 0;">'.join(parts)
-        row_cells += f'<td>{cell_html}</td>'
-    rows_html += f'<tr>{row_cells}</tr>'
+    cells = ""
+    for c in columns:
+        parts = str(row.get(c, "")).split("\n---\n")
+        cells += "<td>" + "<hr style='border-top:1px dashed #666; margin:4px 0;'>".join(parts) + "</td>"
+    rows_html += f"<tr>{cells}</tr>"
 
-# HTML template
 html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  table {{ width:100%; border-collapse: collapse; min-height: 100vh; }}
-  th, td {{ border: 1px solid #ddd; padding: 8px; vertical-align: top; white-space: pre-line; text-align: center; }}
-  th {{ background-color: #333; color: #fff; }}
-  td {{ background-color: #f9f9f9; color: #333; }}
-  hr {{ border: 0; border-top: 1px dashed #666; width: 100%; margin: 4px 0; }}
-</style>
-</head>
-<body>
-  <table>
-    <thead><tr>{headers}</tr></thead>
-    <tbody>{rows_html}</tbody>
-  </table>
-</body>
-</html>
+<!DOCTYPE html><html><head>
+  <style>
+    table {{ width:100%; border-collapse: collapse; }}
+    th, td {{ border:1px solid #ddd; padding:8px; white-space:pre-line; text-align:center; }}
+    th {{ background:#333; color:#fff; }}
+    td {{ background:#f9f9f9; }}
+    hr {{ border:0; border-top:1px dashed #666; }}
+  </style>
+</head><body>
+  <table><thead><tr>{headers}</tr></thead><tbody>{rows_html}</tbody></table>
+</body></html>
 """
-
-# Display the HTML component with adaptive height
 components.html(html, height=700, scrolling=True)
 
-# When showing exam schedule view, list courses without final exams
-if schedule_type == 'Exam' and display_mode == 'Schedule View':
-    # Identify courses without exam entries
-    exam_courses = set(
-        df_filtered[['Exam Date','Course Code']]
-        .dropna()
-        .drop_duplicates(subset=['Course Code'])['Course Code']
-    )
-    all_courses = set(df_filtered['Course Code'].dropna().unique())
+# ——— List courses without final exam ————————————————————————————
+if schedule_type == "Exam":
+    exam_courses = set(df[['Exam Date','Course Code']].dropna()['Course Code'])
+    all_courses  = set(df['Course Code'].dropna())
     no_exam = sorted(all_courses - exam_courses)
     if no_exam:
         st.markdown("**Courses without Final Exam:**")
-        for course in no_exam:
-            st.markdown(f"- {course}")
+        for c in no_exam:
+            st.markdown(f"- {c}")
