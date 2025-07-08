@@ -47,11 +47,11 @@ selected_staff = st.sidebar.multiselect('Select Instructor(s)', staff_names,
                                         )
 
 # Level filter
-if 'Level' in df_filtered.columns:
+if 'Level' in df.columns:
     selected_level = st.sidebar.radio('Select Level', ['UG', 'PG', 'Both'], index=2,
                                       help="Filter by course level: UG, PG, or Both")
     if selected_level != 'Both':
-        df_filtered = df_filtered[df_filtered['Level'] == selected_level].copy()
+        df = df[df['Level'] == selected_level].copy()
 
 # Filter data based on selection
 if selected_staff:
