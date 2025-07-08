@@ -56,6 +56,25 @@ else:
 schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'],
                                      help="Select 'Lecture' for regular classes or 'Exam' for final exam schedule"
                                      )
+
+# Time slot filter based on schedule type
+
+help_time_slot="Select one or more time slots to filter the schedule"
+if schedule_type == 'Lecture':
+    time_options = sorted(df_filtered['Time'].dropna().unique())
+    selected_times = st.sidebar.multiselect('Select Time Slots', time_options,
+                                            help=help_time_slot,
+                                            )
+    if selected_times:
+        df_filtered = df_filtered[df_filtered['Time'].isin(selected_times)].copy()
+else:  # Exam
+    exam_times = sorted(df_filtered['Exam Time'].dropna().unique())
+    selected_times = st.sidebar.multiselect('Select Exam Time Slots', exam_times,
+                                            help=help_time_slot,
+                                            )
+    if selected_times:
+        df_filtered = df_filtered[df_filtered['Exam Time'].isin(selected_times)].copy()
+
 # View mode selector
 display_mode = st.sidebar.selectbox('View Mode', ['Schedule View', 'Table View'],
                                     help="Choose 'Schedule View' for a visual timetable or 'Table View' for a detailed list"
