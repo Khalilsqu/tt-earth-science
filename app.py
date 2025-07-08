@@ -52,6 +52,13 @@ if selected_staff:
 else:
     df_filtered = df.copy()
 
+# Level filter
+if 'Level' in df_filtered.columns:
+    selected_level = st.sidebar.radio('Select Level', ['UG', 'PG', 'Both'], index=2,
+                                      help="Filter by course level: UG, PG, or Both")
+    if selected_level != 'Both':
+        df_filtered = df_filtered[df_filtered['Level'] == selected_level].copy()
+
 # Schedule type selector
 schedule_type = st.sidebar.selectbox('Schedule Type', ['Lecture', 'Exam'],
                                      help="Select 'Lecture' for regular classes or 'Exam' for final exam schedule"
