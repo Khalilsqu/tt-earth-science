@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import streamlit.components.v1 as components
 import pandas as pd
+from html import escape  # makes sure quotes & special chars are safe
 
 # ——— Read any existing query‐params —————————————————————————————
 params = st.query_params
@@ -133,9 +134,17 @@ if display_mode == "Table View":
     st.stop()
 
 # ——— Build Cell content ——————————————————————————————————————
+INFO_ICON = "ⓘ"
+
 df['Cell'] = df.apply(
-    lambda r: f"{r['Course Code']} ({r['Section']})\n{r['Staff Name']}\n{r['Hall']}",
-    axis=1
+    lambda r: (
+        f"{r['Course Code']} "
+        f" ({r['Section']})"
+        f"<span style='cursor: help; font-weight: bold; margin-left:2px; color: #666;' title='{escape(str(r['Course Name']))}'>{INFO_ICON}</span><br>"
+        f"{r['Staff Name']}<br>"
+        f"{r['Hall']}"
+    ),
+    axis=1,
 )
 
 # ——— Build Schedule Data —————————————————————————————————————
@@ -146,7 +155,7 @@ if schedule_type == "Lecture":
         index='Time',
         columns='Day',
         values='Cell',
-        aggfunc=lambda cells: "\n---\n".join(cells)
+        aggfunc=lambda cells: "<hr style='border-top:1px dotted #a86032; margin:2px 0;'></hr>".join(cells)
     ).reindex(columns=days_order).fillna("")
     schedule_data = pivot.reset_index().to_dict(orient="records")
     columns = ["Time"] + days_order
