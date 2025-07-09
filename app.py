@@ -51,16 +51,6 @@ df = df[df['Data Source'] == selected_source]
 if selected_level != "Both" and 'Level' in df.columns:
     df = df[df['Level'] == selected_level]
 
-# ——— Instructor filter (not in URL) —————————————————————————————
-staff_names = sorted(df['Staff Name'].dropna().unique().astype(str))
-selected_staff = st.sidebar.multiselect(
-    "Select Instructor(s)",
-    staff_names,
-    help="Filter by one or more instructors"
-)
-if selected_staff:
-    df = df[df['Staff Name'].isin(selected_staff)]
-
 # ——— Schedule Type selector ——————————————————————————————————
 types = ["Lecture", "Exam"]
 typ = params.get("type", DEFAULT_TYPE)
@@ -73,6 +63,24 @@ schedule_type = st.sidebar.selectbox(
     index=types.index(typ),
     help="Lecture vs Exam"
 )
+# ——— Course filter ———————————————————————————————————————
+courses = sorted(df['Course Code'].dropna().unique().astype(str))
+selected_courses = st.sidebar.multiselect(
+    "Select Course(s)",
+    courses,
+    help="Filter by one or more courses"
+)
+if selected_courses:
+    df = df[df['Course Code'].isin(selected_courses)]
+
+staff_names = sorted(df['Staff Name'].dropna().unique().astype(str))
+selected_staff = st.sidebar.multiselect(
+    "Select Instructor(s)",
+    staff_names,
+    help="Filter by one or more instructors"
+)
+if selected_staff:
+    df = df[df['Staff Name'].isin(selected_staff)]
 
 # ——— Time‐slot filter ———————————————————————————————————————
 time_help = "Select one or more time slots"
@@ -163,7 +171,7 @@ else:
     for t in times:
         try:
             parsed.append(pd.to_datetime(t.split(" - ")[0].strip(), format="%I:%M%p"))
-        except:
+        except Exception:
             parsed.append(pd.Timestamp.max)
     ordered = [t for _, t in sorted(zip(parsed, times))]
     pivot = pivot.reindex(index=ordered).fillna("")
