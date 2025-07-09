@@ -16,17 +16,14 @@ st.markdown("<h1 style='font-size:32px;'>Earth Sciences TimeTable</h1>", unsafe_
 
 # ——— Load the sheet ————————————————————————————————————————————
 conn = st.connection("gsheets", type=GSheetsConnection)
-df = conn.read(ttl="5m")
+df = conn.read(ttl="30m")
 
 # ——— Data Source selector ——————————————————————————————————————
 data_sources = sorted(df['Data Source'].dropna().unique().astype(str))
 DEFAULT_SOURCE = data_sources[-1]
-
-# read or fallback
 src = params.get("source", DEFAULT_SOURCE)
 if src not in data_sources:
     src = DEFAULT_SOURCE
-
 selected_source = st.sidebar.selectbox(
     "Data Source",
     data_sources,
@@ -39,7 +36,6 @@ levels = ["UG", "PG", "Both"]
 lvl = params.get("level", DEFAULT_LEVEL)
 if lvl not in levels:
     lvl = DEFAULT_LEVEL
-
 selected_level = st.sidebar.radio(
     "Level",
     levels,
@@ -47,7 +43,7 @@ selected_level = st.sidebar.radio(
     help="UG, PG, or Both"
 )
 
-# ——— Apply Data Source + Level so Staff list is accurate —————————————————
+# ——— Apply Data Source + Level so Staff list is accurate ——————————————
 df = df[df['Data Source'] == selected_source]
 if selected_level != "Both" and 'Level' in df.columns:
     df = df[df['Level'] == selected_level]
@@ -57,13 +53,13 @@ types = ["Lecture", "Exam"]
 typ = params.get("type", DEFAULT_TYPE)
 if typ not in types:
     typ = DEFAULT_TYPE
-
 schedule_type = st.sidebar.selectbox(
     "Schedule Type",
     types,
     index=types.index(typ),
     help="Lecture vs Exam"
 )
+
 # ——— Course filter ———————————————————————————————————————
 courses = sorted(df['Course Code'].dropna().unique().astype(str))
 selected_courses = st.sidebar.multiselect(
@@ -74,6 +70,7 @@ selected_courses = st.sidebar.multiselect(
 if selected_courses:
     df = df[df['Course Code'].isin(selected_courses)]
 
+# ——— Staff filter ———————————————————————————————————————
 staff_names = sorted(df['Staff Name'].dropna().unique().astype(str))
 selected_staff = st.sidebar.multiselect(
     "Select Instructor(s)",
@@ -101,7 +98,6 @@ views = ["Schedule View", "Table View"]
 vw = params.get("view", DEFAULT_VIEW)
 if vw not in views:
     vw = DEFAULT_VIEW
-
 display_mode = st.sidebar.selectbox(
     "View Mode",
     views,
@@ -133,14 +129,13 @@ if display_mode == "Table View":
         st.dataframe(df2, height=600)
     st.stop()
 
-# ——— Build Cell content ——————————————————————————————————————
+# ——— Build Cell content with CSS tooltip —————————————————————————————
 INFO_ICON = "ⓘ"
-
 df['Cell'] = df.apply(
     lambda r: (
-        f"{r['Course Code']} "
-        f" ({r['Section']})"
-        f"<span style='cursor: help; font-weight: bold; margin-left:2px; color: #666; font-size:0.8em;' title='{escape(str(r['Course Name']))}'>{INFO_ICON}</span><br>"
+        f"{r['Course Code']} ({r['Section']}) "
+        f"<span class='tooltip' data-tooltip='{escape(str(r['Course Name']))}'"
+        f" style='font-weight:bold; margin-left:4px;'>{INFO_ICON}</span><br>"
         f"{r['Staff Name']}<br>"
         f"{r['Hall']}"
     ),
@@ -180,7 +175,7 @@ else:
     for t in times:
         try:
             parsed.append(pd.to_datetime(t.split(" - ")[0].strip(), format="%I:%M%p"))
-        except Exception:
+        except:
             parsed.append(pd.Timestamp.max)
     ordered = [t for _, t in sorted(zip(parsed, times))]
     pivot = pivot.reindex(index=ordered).fillna("")
@@ -189,7 +184,7 @@ else:
     schedule_data = pivot.reset_index().to_dict(orient="records")
     columns = ["Exam Time"] + date_cols
 
-# ——— Render HTML Schedule —————————————————————————————————————
+# ——— Render HTML Schedule + CSS Tooltip Styles —————————————————————
 headers = "".join(f"<th>{c}</th>" for c in columns)
 rows_html = ""
 for row in schedule_data:
@@ -200,18 +195,49 @@ for row in schedule_data:
     rows_html += f"<tr>{cells}</tr>"
 
 html = f"""
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html>
+<head>
   <style>
+    /* table styling */
     table {{ width:100%; border-collapse: collapse; }}
     th, td {{ border:1px solid #ddd; padding:8px; white-space:pre-line; text-align:center; }}
     th {{ background:#333; color:#fff; }}
     td {{ background:#f9f9f9; }}
     hr {{ border:0; border-top:1px dashed #666; }}
+
+    /* CSS Tooltip */
+    .tooltip {{ position: relative; display: inline-block; cursor: help; }}
+    .tooltip::after {{
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 8px;
+      white-space: nowrap;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s ease-out;
+      z-index: 10;
+    }}
+    .tooltip:hover::after {{
+      opacity: 1;
+    }}
   </style>
-</head><body>
-  <table><thead><tr>{headers}</tr></thead><tbody>{rows_html}</tbody></table>
-</body></html>
+</head>
+<body>
+  <table>
+    <thead><tr>{headers}</tr></thead>
+    <tbody>{rows_html}</tbody>
+  </table>
+</body>
+</html>
 """
+
 components.html(html, height=700, scrolling=True)
 
 # ——— List courses without final exam ————————————————————————————
