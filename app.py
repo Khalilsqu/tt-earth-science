@@ -207,7 +207,10 @@ html = f"""
     hr {{ border:0; border-top:1px dashed #666; }}
 
     /* CSS Tooltip */
-    .tooltip {{ position: relative; display: inline-block; cursor: help; }}
+    .tooltip {{ position: relative; display: inline-block; cursor: help;
+      font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+      font-size: 16px;
+      line-height: 1; }}
     .tooltip::after {{
       content: attr(data-tooltip);
       position: absolute;
