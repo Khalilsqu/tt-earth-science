@@ -140,7 +140,7 @@ df['Cell'] = df.apply(
     lambda r: (
         f"{r['Course Code']} "
         f" ({r['Section']})"
-        f"<span style='cursor: help; font-weight: bold; margin-left:2px; color: #666;' title='{escape(str(r['Course Name']))}'>{INFO_ICON}</span><br>"
+        f"<span style='cursor: help; font-weight: bold; margin-left:2px; color: #666; font-size:0.8em;' title='{escape(str(r['Course Name']))}'>{INFO_ICON}</span><br>"
         f"{r['Staff Name']}<br>"
         f"{r['Hall']}"
     ),
