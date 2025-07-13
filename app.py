@@ -16,7 +16,7 @@ st.markdown("<h1 style='font-size:32px;'>Earth Sciences TimeTable</h1>", unsafe_
 
 # ——— Load the sheet ————————————————————————————————————————————
 conn = st.connection("gsheets", type=GSheetsConnection)
-df = conn.read(ttl="30m")
+df = conn.read(ttl="5m")
 
 # ——— Data Source selector ——————————————————————————————————————
 data_sources = sorted(df['Data Source'].dropna().unique().astype(str))
